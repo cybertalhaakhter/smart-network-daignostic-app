@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -212,9 +212,11 @@ class SecurityCheck {
   Future<String?> _resolveSsid() async {
     try {
       final status = await Permission.locationWhenInUse.request();
+      debugPrint('[SecurityCheck] location permission status: $status');
       if (!status.isGranted) return null;
 
       String? ssid = await NetworkInfo().getWifiName();
+      debugPrint('[SecurityCheck] raw getWifiName(): $ssid');
       if (ssid == null) return null;
 
       // Some platforms wrap the SSID in surrounding quotes.
@@ -225,12 +227,14 @@ class SecurityCheck {
       if (ssid.isEmpty ||
           ssid == "<unknown ssid>" ||
           ssid.toLowerCase() == "unknown") {
+        debugPrint('[SecurityCheck] ssid rejected as placeholder: "$ssid"');
         return null;
       }
       return ssid;
-    } catch (_) {
+    } catch (e) {
       // Permission API or plugin may be unimplemented on this platform
       // (e.g. Linux/Windows) — treat as unresolvable rather than crashing.
+      debugPrint('[SecurityCheck] _resolveSsid threw: $e');
       return null;
     }
   }
@@ -243,14 +247,17 @@ class SecurityCheck {
   Future<String?> _resolveBssid() async {
     try {
       final bssid = await NetworkInfo().getWifiBSSID();
+      debugPrint('[SecurityCheck] raw getWifiBSSID(): $bssid');
       if (bssid == null || bssid.isEmpty) return null;
       final normalized = bssid.toLowerCase();
       if (normalized == "02:00:00:00:00:00" || normalized == "00:00:00:00:00:00") {
         // Placeholder BSSID some platforms return when access is restricted.
+        debugPrint('[SecurityCheck] bssid rejected as placeholder: $bssid');
         return null;
       }
       return bssid;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SecurityCheck] _resolveBssid threw: $e');
       return null;
     }
   }
